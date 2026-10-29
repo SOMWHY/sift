@@ -47,14 +47,16 @@ export class FileRepo {
   /** 相同 hash 视为同一文件：已存在则更新，否则插入。 */
   upsertByHash(f: NewFile): DbFile {
     if (f.hash != null) {
-      const existing = this.db
-        .prepare('SELECT * FROM files WHERE hash = ?')
-        .get(f.hash) as DbFile | undefined;
+      const existing = this.getByHash(f.hash);
       if (existing) {
         this.update(existing.id, f);
         return this.get(existing.id) as DbFile;
       }
     }
     return this.create(f);
+  }
+
+  getByHash(hash: string): DbFile | undefined {
+    return this.db.prepare('SELECT * FROM files WHERE hash = ?').get(hash) as DbFile | undefined;
   }
 }
