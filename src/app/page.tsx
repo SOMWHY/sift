@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { NoKeyBanner } from '../components/NoKeyBanner';
 
 interface Health {
   status: string;
@@ -11,6 +13,7 @@ export default function HomePage() {
   const [health, setHealth] = useState<Health>({ status: 'checking', version: null });
   const [authorizedRoot, setAuthorizedRoot] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [aiConfigured, setAiConfigured] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,9 +24,12 @@ export default function HomePage() {
       const data = (await res.json()) as { status: string };
       const settings =
         typeof window !== 'undefined' && window.sift ? await window.sift.getSettings() : null;
+      const providerStatus =
+        typeof window !== 'undefined' && window.sift ? await window.sift.getProviderStatus() : null;
       if (!cancelled) {
         setHealth({ status: data.status, version });
         setAuthorizedRoot(settings?.authorizedRoot ?? null);
+        setAiConfigured(providerStatus?.configured ?? false);
       }
     }
     void load();
@@ -48,6 +54,10 @@ export default function HomePage() {
 
   return (
     <main style={{ padding: '2rem' }}>
+      <NoKeyBanner configured={aiConfigured} />
+      <nav style={{ marginBottom: '1rem' }}>
+        <Link href="/settings">设置</Link>
+      </nav>
       <h1>Sift</h1>
       <p>帮你看清下载文件夹，默认不动你的文件。</p>
       <dl>

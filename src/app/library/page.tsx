@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { SearchResult, TagView } from '../../../shared/ipc-contract';
+import { NoKeyBanner } from '../../components/NoKeyBanner';
 
 type Filter = { tagId: string | null; untaggedOnly: boolean };
 
@@ -12,6 +13,7 @@ export default function LibraryPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [filter, setFilter] = useState<Filter>({ tagId: null, untaggedOnly: false });
   const [loading, setLoading] = useState(false);
+  const [aiConfigured, setAiConfigured] = useState(false);
 
   const refresh = useCallback(async (query: string) => {
     if (typeof window === 'undefined' || !window.sift) return;
@@ -29,6 +31,7 @@ export default function LibraryPage() {
     void (async () => {
       if (typeof window === 'undefined' || !window.sift) return;
       setTags(await window.sift.listTags());
+      setAiConfigured((await window.sift.getProviderStatus()).configured);
     })();
   }, []);
 
@@ -49,6 +52,7 @@ export default function LibraryPage() {
 
   return (
     <main style={{ padding: '2rem', maxWidth: 960, margin: '0 auto' }}>
+      <NoKeyBanner configured={aiConfigured} />
       <nav style={{ marginBottom: '1rem' }}>
         <Link href="/">← 返回</Link>
       </nav>

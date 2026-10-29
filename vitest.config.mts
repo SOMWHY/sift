@@ -16,8 +16,9 @@ function sqlTextPlugin(): Plugin {
 export default defineConfig({
   plugins: [sqlTextPlugin()],
   test: {
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.{ts,tsx}'],
     environment: 'node',
+    globals: true,
     testTimeout: 20000,
   },
 });
