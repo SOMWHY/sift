@@ -97,4 +97,22 @@ describe('FileRepo', () => {
     expect(repo.listByStatus('new')).toHaveLength(1);
     expect(repo.listByStatus('indexed')[0].path).toBe('b');
   });
+
+  it('getByHash / getByPath 按唯一键查找', () => {
+    ctx = createTestDb();
+    const repo = new FileRepo(ctx.db);
+    repo.create({
+      path: 'C:/inbox/a.pdf',
+      hash: 'h1',
+      size: 10,
+      mime: null,
+      extracted_text: null,
+      indexed_at: null,
+      status: 'indexed',
+    });
+
+    expect(repo.getByHash('h1')?.path).toBe('C:/inbox/a.pdf');
+    expect(repo.getByPath('C:/inbox/a.pdf')?.hash).toBe('h1');
+    expect(repo.getByPath('C:/missing.pdf')).toBeUndefined();
+  });
 });

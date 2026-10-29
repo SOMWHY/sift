@@ -59,4 +59,8 @@ export class FileRepo {
   getByHash(hash: string): DbFile | undefined {
     return this.db.prepare('SELECT * FROM files WHERE hash = ?').get(hash) as DbFile | undefined;
   }
+
+  getByPath(p: string): DbFile | undefined {
+    return this.db.prepare('SELECT * FROM files WHERE path = ?').get(p) as DbFile | undefined;
+  }
 }

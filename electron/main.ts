@@ -10,6 +10,7 @@ import { registerDirectoryHandlers } from './ipc/handlers';
 import { registerLibraryHandlers } from './ipc/library';
 import { registerProviderHandlers } from './ipc/providers';
 import { registerSuggestionHandlers } from './ipc/suggestions';
+import { registerArchiveHandlers } from './ipc/archive';
 import { watchRoot, type WatcherHandle } from './indexer/watcher';
 import { FileRepo } from './db/repos/files';
 import { ProviderRepo } from './db/repos/providers';
@@ -120,6 +121,20 @@ function registerSuggestionHandlersInMain(db: Database.Database): void {
   });
 }
 
+function registerArchiveHandlersInMain(db: Database.Database): void {
+  const settings = new SettingsRepo(db);
+  const num = (key: string, fallback: number) => {
+    const v = Number(settings.get(key));
+    return Number.isFinite(v) && v > 0 ? v : fallback;
+  };
+  registerArchiveHandlers(ipcMain, {
+    db,
+    getAuthorizedRoot: () => settings.get('authorizedRoot') ?? null,
+    getLowConfidenceThreshold: () => num('midThreshold', 0.5),
+    onChange: () => refreshTrayBadge(),
+  });
+}
+
 /** 打开态建议数 + AI 是否已配置 → 驱动托盘红点。 */
 function refreshTrayBadge(): void {
   if (!tray || !db) return;
@@ -145,6 +160,7 @@ app.whenReady().then(() => {
   registerLibraryHandlersInMain(db);
   registerProviderHandlersInMain(db);
   registerSuggestionHandlersInMain(db);
+  registerArchiveHandlersInMain(db);
 
   tray = new TrayController(showMainWindow);
   refreshTrayBadge();
