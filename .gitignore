@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+dist-electron/
+*.tsbuildinfo
+
+# Local databases
+*.db
+*.db-wal
+*.db-shm
+
+# Environment files (never commit real values)
+.env
+.env.local
+.env.production
+.env.development
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Agent workspace
+.pi/
