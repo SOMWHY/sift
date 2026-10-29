@@ -13,6 +13,8 @@ export interface DirectoryDeps {
   settings: SettingsRepo;
   /** 原生目录选择；测试注入假实现。 */
   pickDirectory: () => Promise<string | null>;
+  /** 授权根变化时回调（主进程用于启/停增量监听）。 */
+  onAuthorizedRootChanged?: (root: string | null) => void;
 }
 
 export const DEFAULT_SETTINGS = {
@@ -42,6 +44,7 @@ export function registerDirectoryHandlers(ipc: IpcRegistrar, deps: DirectoryDeps
     const path = String(p);
     if (!path.trim()) return { ok: false };
     deps.settings.set('authorizedRoot', path);
+    deps.onAuthorizedRootChanged?.(path);
     return { ok: true };
   });
 

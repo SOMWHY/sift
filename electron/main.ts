@@ -7,8 +7,12 @@ import { getDb } from './db/connection';
 import { runMigrations } from './db/migrations';
 import { SettingsRepo } from './db/repos/settings';
 import { registerDirectoryHandlers } from './ipc/handlers';
+import { registerLibraryHandlers } from './ipc/library';
+import { watchRoot, type WatcherHandle } from './indexer/watcher';
+import { FileRepo } from './db/repos/files';
 
 let db: Database.Database | null = null;
+let watcher: WatcherHandle | null = null;
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -53,13 +57,34 @@ function registerDirectoryHandlersInMain(db: Database.Database): void {
       });
       return result.canceled ? null : (result.filePaths[0] ?? null);
     },
+    onAuthorizedRootChanged: (root) => void restartWatcher(db, root),
   });
+}
+
+async function restartWatcher(db: Database.Database, root: string | null): Promise<void> {
+  if (watcher) {
+    await watcher.close();
+    watcher = null;
+  }
+  if (root) {
+    watcher = watchRoot(root, new FileRepo(db));
+  }
+}
+
+function registerLibraryHandlersInMain(db: Database.Database): void {
+  registerLibraryHandlers(ipcMain, { db });
 }
 
 app.whenReady().then(() => {
   registerM0Handlers();
   db = initDatabase();
   registerDirectoryHandlersInMain(db);
+  registerLibraryHandlersInMain(db);
+
+  // 启动时若已有授权根，恢复增量监听。
+  const root = new SettingsRepo(db).get('authorizedRoot');
+  if (root) void restartWatcher(db, root);
+
   void createWindow();
 
   app.on('activate', () => {
