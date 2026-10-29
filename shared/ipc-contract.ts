@@ -18,6 +18,7 @@ export const IPC = {
   ignore: 'sift:ignore',
   search: 'sift:search',
   addManualTag: 'sift:add-manual-tag',
+  listTags: 'sift:list-tags',
   saveProvider: 'sift:save-provider',
   getProviderStatus: 'sift:get-provider-status',
   testConnection: 'sift:test-connection',
@@ -75,6 +76,11 @@ export interface SearchResult {
   tagIds: string[];
 }
 
+export interface TagView {
+  id: string;
+  name: string;
+}
+
 export interface ArchiveDryRunEntry {
   sourcePath: string;
   targetPath: string;
@@ -122,6 +128,7 @@ export interface SiftBridge {
   ignore(suggestionId: string): Promise<{ ok: boolean }>;
   search(q: string, opts?: { tagIds?: string[] }): Promise<SearchResult[]>;
   addManualTag(fileId: string, tagId: string): Promise<{ ok: boolean }>;
+  listTags(): Promise<TagView[]>;
   saveProvider(config: ProviderConfig): Promise<{ configured: boolean }>;
   getProviderStatus(): Promise<ProviderStatus>;
   testConnection(providerId: string): Promise<{ ok: boolean; error?: string }>;

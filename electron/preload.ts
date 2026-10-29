@@ -17,6 +17,7 @@ const bridge: SiftBridge = {
   ignore: (suggestionId) => invoke(IPC.ignore, suggestionId) as Promise<{ ok: boolean }>,
   search: (q, opts) => invoke(IPC.search, q, opts) as ReturnType<SiftBridge['search']>,
   addManualTag: (fileId, tagId) => invoke(IPC.addManualTag, fileId, tagId) as Promise<{ ok: boolean }>,
+  listTags: () => invoke(IPC.listTags) as ReturnType<SiftBridge['listTags']>,
   saveProvider: (config) => invoke(IPC.saveProvider, config) as Promise<{ configured: boolean }>,
   getProviderStatus: () => invoke(IPC.getProviderStatus) as ReturnType<SiftBridge['getProviderStatus']>,
   testConnection: (providerId) => invoke(IPC.testConnection, providerId) as Promise<{ ok: boolean; error?: string }>,

@@ -32,7 +32,7 @@ afterAll(() => {
 });
 
 describe('runMigrations', () => {
-  it('幂等：跑两遍结果一致（10 表齐全，_migrations 只有 1 条记录）', () => {
+  it('幂等：跑两遍结果一致（10 表齐全，_migrations 恰好 2 条记录）', () => {
     runMigrations(db);
     runMigrations(db);
 
@@ -50,7 +50,7 @@ describe('runMigrations', () => {
     const migrationCount = db
       .prepare('SELECT COUNT(*) AS n FROM _migrations')
       .get() as { n: number };
-    expect(migrationCount.n).toBe(1);
+    expect(migrationCount.n).toBe(2);
   });
 
   it('必要索引存在：files.path、files.hash、operation_log.batch_id、operation_log.created_at', () => {

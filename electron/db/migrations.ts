@@ -9,6 +9,33 @@ interface Migration {
 
 const MIGRATIONS: Migration[] = [
   { version: 1, name: 'initial_schema', sql: schemaSql },
+  {
+    version: 2,
+    name: 'files_fts',
+    sql: `
+      CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(
+        path, extracted_text,
+        content='files', content_rowid='id'
+      );
+
+      CREATE TRIGGER IF NOT EXISTS files_ai AFTER INSERT ON files BEGIN
+        INSERT INTO files_fts(rowid, path, extracted_text)
+        VALUES (new.id, new.path, new.extracted_text);
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS files_ad AFTER DELETE ON files BEGIN
+        INSERT INTO files_fts(files_fts, rowid, path, extracted_text)
+        VALUES ('delete', old.id, old.path, old.extracted_text);
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS files_au AFTER UPDATE ON files BEGIN
+        INSERT INTO files_fts(files_fts, rowid, path, extracted_text)
+        VALUES ('delete', old.id, old.path, old.extracted_text);
+        INSERT INTO files_fts(rowid, path, extracted_text)
+        VALUES (new.id, new.path, new.extracted_text);
+      END;
+    `,
+  },
 ];
 
 /**
