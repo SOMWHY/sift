@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, safeStorage } from 'electron';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
 import { startServer, stopServer, getServerUrl } from './server';
@@ -8,8 +8,12 @@ import { runMigrations } from './db/migrations';
 import { SettingsRepo } from './db/repos/settings';
 import { registerDirectoryHandlers } from './ipc/handlers';
 import { registerLibraryHandlers } from './ipc/library';
+import { registerProviderHandlers } from './ipc/providers';
 import { watchRoot, type WatcherHandle } from './indexer/watcher';
 import { FileRepo } from './db/repos/files';
+import { ProviderRepo } from './db/repos/providers';
+import { createKeyStore } from './providers/key-store';
+import { createLLMClient } from './providers/llm-client';
 
 let db: Database.Database | null = null;
 let watcher: WatcherHandle | null = null;
@@ -75,11 +79,25 @@ function registerLibraryHandlersInMain(db: Database.Database): void {
   registerLibraryHandlers(ipcMain, { db });
 }
 
+function registerProviderHandlersInMain(db: Database.Database): void {
+  const repo = new ProviderRepo(db);
+  const keyStore = createKeyStore(safeStorage);
+  const llm = createLLMClient({
+    resolveKey: async (providerId: string) => {
+      const p = repo.list().find((x) => x.provider_id === providerId);
+      if (!p?.encrypted_api_key) throw new Error('未配置 API Key');
+      return keyStore.decryptKey(p.encrypted_api_key);
+    },
+  });
+  registerProviderHandlers(ipcMain, { repo, keyStore, llm });
+}
+
 app.whenReady().then(() => {
   registerM0Handlers();
   db = initDatabase();
   registerDirectoryHandlersInMain(db);
   registerLibraryHandlersInMain(db);
+  registerProviderHandlersInMain(db);
 
   // 启动时若已有授权根，恢复增量监听。
   const root = new SettingsRepo(db).get('authorizedRoot');
