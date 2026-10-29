@@ -8,7 +8,7 @@
     "dev": "npm run build:renderer && npm run build:main && electron .",
     "build": "npm run typecheck && npm run build:renderer && npm run build:main",
     "build:renderer": "next build && node scripts/copy-standalone.mjs",
-    "build:main": "esbuild electron/main.ts --bundle --platform=node --format=cjs --external:electron --external:better-sqlite3 --outfile=dist-electron/main.cjs && esbuild electron/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/preload.cjs",
+    "build:main": "esbuild electron/main.ts --bundle --platform=node --format=cjs --loader:.sql=text --external:electron --external:better-sqlite3 --outfile=dist-electron/main.cjs && esbuild electron/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/preload.cjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.main.json",
     "lint": "eslint .",
     "test": "vitest run",
