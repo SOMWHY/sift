@@ -113,6 +113,8 @@ export interface LedgerEntry {
   opType: string;
   confidence: number | null;
   userDecision: string | null;
+  suggestionId: number | null;
+  tags: string[];
   createdAt: string;
 }
 
@@ -126,7 +128,7 @@ export interface Settings {
 
 export interface UndoCriteria {
   since?: string;
-  fromSuggestionId?: string;
+  fromSuggestion?: boolean;
 }
 
 /** 渲染层 window.sift.* 的类型契约 */

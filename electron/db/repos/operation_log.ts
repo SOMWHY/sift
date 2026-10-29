@@ -30,4 +30,22 @@ export class OperationLogRepo {
   list(): OperationLogEntry[] {
     return this.db.prepare('SELECT * FROM operation_log ORDER BY id').all() as OperationLogEntry[];
   }
+
+  getById(id: number): OperationLogEntry | undefined {
+    return this.db.prepare('SELECT * FROM operation_log WHERE id = ?').get(id) as OperationLogEntry | undefined;
+  }
+
+  listByCondition(since: string | undefined, fromSuggestion: boolean): OperationLogEntry[] {
+    const clauses: string[] = [];
+    const params: unknown[] = [];
+    if (since) {
+      clauses.push('created_at >= ?');
+      params.push(since);
+    }
+    if (fromSuggestion) {
+      clauses.push('suggestion_id IS NOT NULL');
+    }
+    const where = clauses.length > 0 ? ` WHERE ${clauses.join(' AND ')}` : '';
+    return this.db.prepare(`SELECT * FROM operation_log${where} ORDER BY id`).all(...params) as OperationLogEntry[];
+  }
 }

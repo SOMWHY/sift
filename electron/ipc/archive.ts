@@ -10,6 +10,7 @@ import { createAcl } from '../executor/acl';
 import { executePlan } from '../executor/executor';
 import { hashFile } from '../indexer/hasher';
 import { Ledger } from '../ledger/log';
+import { createUndoService } from '../ledger/undo';
 import type { IpcRegistrar } from './handlers';
 
 export interface ArchiveDeps {
@@ -35,6 +36,11 @@ export function registerArchiveHandlers(ipc: IpcRegistrar, deps: ArchiveDeps): v
   const files = new FileRepo(deps.db);
   const fileTags = new FileTagRepo(deps.db);
   const ledger = new Ledger(new OperationLogRepo(deps.db));
+  const undo = createUndoService({
+    db: deps.db,
+    getAuthorizedRoot: deps.getAuthorizedRoot,
+    onChange: deps.onChange,
+  });
 
   ipc.handle(IPC.archiveDryRun, (fileIds: unknown, targetDir: unknown) => {
     const ids = (Array.isArray(fileIds) ? fileIds : [])
@@ -132,4 +138,22 @@ export function registerArchiveHandlers(ipc: IpcRegistrar, deps: ArchiveDeps): v
     deps.onChange?.();
     return { ok: result.blocked === 0, executed: result.executed, blocked: result.blocked };
   });
+
+  ipc.handle(IPC.undoEntry, (id: unknown) => {
+    const r = undo.undoEntry(Number(id));
+    return { ok: r.undone > 0 };
+  });
+
+  ipc.handle(IPC.undoBatch, (batchId: unknown) => {
+    const r = undo.undoBatch(String(batchId ?? ''));
+    return { ok: r.undone > 0 };
+  });
+
+  ipc.handle(IPC.undoByCondition, (criteria: unknown) => {
+    const c = (criteria ?? {}) as { since?: string; fromSuggestion?: boolean };
+    const r = undo.undoByCondition({ since: c.since, fromSuggestion: c.fromSuggestion ?? false });
+    return { ok: r.undone > 0, undone: r.undone };
+  });
+
+  ipc.handle(IPC.exportLedger, () => undo.exportLedger());
 }
