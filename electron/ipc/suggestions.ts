@@ -5,6 +5,7 @@ import { FileRepo } from '../db/repos/files';
 import { FileTagRepo } from '../db/repos/file_tags';
 import { SuggestionRepo } from '../db/repos/suggestions';
 import { TagRepo } from '../db/repos/tags';
+import { recordFeedback, derivePattern } from '../suggestions/preferences';
 import type { IpcRegistrar } from './handlers';
 
 export interface SuggestionDeps {
@@ -69,6 +70,12 @@ export function registerSuggestionHandlers(ipc: IpcRegistrar, deps: SuggestionDe
       const tag = tags.getByName(s.proposed_tag) ?? tags.create(s.proposed_tag);
       fileTags.set(s.file_id, tag.id, s.confidence);
       suggestions.updateStatus(s.id, 'accepted');
+      recordFeedback(deps.db, {
+        suggestionId: s.id,
+        action: 'accepted',
+        fromTag: null,
+        toTag: s.proposed_tag,
+      });
     }
     deps.onChange?.();
     return { ok: true };
@@ -80,6 +87,12 @@ export function registerSuggestionHandlers(ipc: IpcRegistrar, deps: SuggestionDe
     if (!s || !tag) return { ok: false };
     fileTags.set(s.file_id, tag.id, s.confidence);
     suggestions.updateStatus(s.id, 'redirected');
+    recordFeedback(deps.db, {
+      suggestionId: s.id,
+      action: 'redirected',
+      fromTag: s.proposed_tag,
+      toTag: tag.name,
+    });
     deps.onChange?.();
     return { ok: true };
   });
@@ -88,6 +101,12 @@ export function registerSuggestionHandlers(ipc: IpcRegistrar, deps: SuggestionDe
     const s = suggestions.get(Number(suggestionId));
     if (!s) return { ok: false };
     suggestions.updateStatus(s.id, 'rejected');
+    recordFeedback(deps.db, {
+      suggestionId: s.id,
+      action: 'rejected',
+      fromTag: s.proposed_tag,
+      toTag: null,
+    });
     deps.onChange?.();
     return { ok: true };
   });
