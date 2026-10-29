@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import type { Preference } from '../../../shared/types';
 import {
   parsePlan,
   createSuggestionEngine,
@@ -91,5 +92,58 @@ describe('generateSuggestion (Task 4.1)', () => {
     const { engine } = engineWith(raw);
     const draft = await engine.generateSuggestion(file, taxonomy, []);
     expect(draft).toEqual({ proposedTag: '证件', confidence: 0.6, reason: '文件名含证件' });
+  });
+});
+
+function engineWithPrefs(raw: string, prefs: Preference[]) {
+  const chat = vi.fn(async () => raw);
+  const engine = createSuggestionEngine({ chat, getPreferences: () => prefs });
+  return { engine };
+}
+
+describe('generateSuggestion 应用 preferences (Task 6.3)', () => {
+  const raw = JSON.stringify({
+    proposed_tag: '合同',
+    confidence: 0.8,
+    reason: '文件名含合同',
+  });
+
+  const invoicePref: Preference = {
+    id: 1,
+    pattern: 'invoice',
+    preferred_tag: '工作/报销',
+    weight: 2,
+    updated_at: new Date().toISOString(),
+  };
+
+  it('命中 pattern → proposed_tag 被纠正为偏好标签', async () => {
+    const { engine } = engineWithPrefs(raw, [invoicePref]);
+    const draft = await engine.generateSuggestion(
+      { fileName: 'invoice-2024.pdf', extractedText: null },
+      ['合同', '发票'],
+      [],
+    );
+    expect(draft?.proposedTag).toBe('工作/报销');
+  });
+
+  it('未命中 pattern → 保持 LLM 原建议', async () => {
+    const { engine } = engineWithPrefs(raw, [invoicePref]);
+    const draft = await engine.generateSuggestion(
+      { fileName: '房屋租赁合同.pdf', extractedText: null },
+      ['合同', '发票'],
+      [],
+    );
+    expect(draft?.proposedTag).toBe('合同');
+  });
+
+  it('多个偏好命中 → 取 weight 最高者', async () => {
+    const low: Preference = { ...invoicePref, id: 2, preferred_tag: '财务', weight: 1 };
+    const { engine } = engineWithPrefs(raw, [low, invoicePref]);
+    const draft = await engine.generateSuggestion(
+      { fileName: 'invoice-2024.pdf', extractedText: null },
+      ['合同'],
+      [],
+    );
+    expect(draft?.proposedTag).toBe('工作/报销');
   });
 });

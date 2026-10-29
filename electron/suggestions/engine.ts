@@ -1,4 +1,5 @@
 import type { ChatMessage } from '../providers/llm-client';
+import type { Preference } from '../../shared/types';
 
 export interface SuggestionDraft {
   proposedTag: string;
@@ -14,6 +15,8 @@ export interface SuggestionFile {
 export interface SuggestionEngineDeps {
   /** 返回 LLM 原始文本；由主进程注入解密后的客户端。 */
   chat: (messages: ChatMessage[]) => Promise<string>;
+  /** 可选：读取全部用户偏好，用于纠正 LLM 建议。 */
+  getPreferences?: () => Preference[];
 }
 
 export interface SuggestionEngine {
@@ -75,7 +78,35 @@ export function createSuggestionEngine(deps: SuggestionEngineDeps): SuggestionEn
         { role: 'system', content: system },
         { role: 'user', content: user },
       ]);
-      return parsePlan(raw);
+      const draft = parsePlan(raw);
+      return draft ? applyPreferences(draft, file.fileName, deps.getPreferences?.() ?? []) : null;
     },
   };
+}
+
+/**
+ * 用户纠正过的文件名 pattern 优先：命中则覆盖 proposedTag。
+ * 命中规则：偏好 pattern 为文件名小写子串（pattern 已由 derivePattern 归一化）。
+ * 多命中取 weight 最高者；weight 相同取 updated_at 较新者。
+ */
+export function applyPreferences(
+  draft: SuggestionDraft,
+  fileName: string,
+  prefs: Preference[],
+): SuggestionDraft {
+  if (prefs.length === 0) return draft;
+  const lower = fileName.toLowerCase();
+  let best: Preference | null = null;
+  for (const p of prefs) {
+    if (!lower.includes(p.pattern.toLowerCase())) continue;
+    if (
+      !best ||
+      p.weight > best.weight ||
+      (p.weight === best.weight && p.updated_at > best.updated_at)
+    ) {
+      best = p;
+    }
+  }
+  if (!best) return draft;
+  return { ...draft, proposedTag: best.preferred_tag };
 }
