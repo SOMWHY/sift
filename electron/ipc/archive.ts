@@ -11,6 +11,7 @@ import { executePlan } from '../executor/executor';
 import { hashFile } from '../indexer/hasher';
 import { Ledger } from '../ledger/log';
 import { createUndoService } from '../ledger/undo';
+import { metrics } from '../metrics';
 import type { IpcRegistrar } from './handlers';
 
 export interface ArchiveDeps {
@@ -141,17 +142,20 @@ export function registerArchiveHandlers(ipc: IpcRegistrar, deps: ArchiveDeps): v
 
   ipc.handle(IPC.undoEntry, (id: unknown) => {
     const r = undo.undoEntry(Number(id));
+    metrics.recordUndo(r.undone > 0);
     return { ok: r.undone > 0 };
   });
 
   ipc.handle(IPC.undoBatch, (batchId: unknown) => {
     const r = undo.undoBatch(String(batchId ?? ''));
+    metrics.recordUndo(r.undone > 0);
     return { ok: r.undone > 0 };
   });
 
   ipc.handle(IPC.undoByCondition, (criteria: unknown) => {
     const c = (criteria ?? {}) as { since?: string; fromSuggestion?: boolean };
     const r = undo.undoByCondition({ since: c.since, fromSuggestion: c.fromSuggestion ?? false });
+    metrics.recordUndo(r.undone > 0);
     return { ok: r.undone > 0, undone: r.undone };
   });
 

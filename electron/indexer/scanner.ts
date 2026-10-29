@@ -5,6 +5,7 @@ import type { FileRepo } from '../db/repos/files';
 import { hashFile } from './hasher';
 import { extractText } from './extractor';
 import { mimeForPath } from './mime';
+import { metrics } from '../metrics';
 
 export type IndexedFile = NewFile;
 
@@ -89,6 +90,7 @@ export async function scanTree(root: string, options: ScanTreeOptions = {}): Pro
     results.push(entry);
     options.files?.upsertByHash(entry);
     options.onProgress?.({ indexed: i + 1, total });
+    metrics.setIndexProgress(i + 1, total);
   }
 
   return results;

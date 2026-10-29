@@ -16,6 +16,7 @@ import { FileRepo } from './db/repos/files';
 import { ProviderRepo } from './db/repos/providers';
 import { createKeyStore } from './providers/key-store';
 import { createLLMClient } from './providers/llm-client';
+import { metrics } from './metrics';
 
 import { SuggestionRepo } from './db/repos/suggestions';
 import { TrayController } from './tray/controller';
@@ -56,6 +57,7 @@ async function createWindow(): Promise<void> {
 function registerM0Handlers(): void {
   ipcMain.handle(IPC.ping, () => 'pong' as const);
   ipcMain.handle(IPC.getVersion, () => app.getVersion());
+  ipcMain.handle(IPC.getMetrics, () => metrics.getSnapshot());
 }
 
 function initDatabase(): Database.Database {
@@ -154,6 +156,7 @@ function showMainWindow(): void {
 }
 
 app.whenReady().then(() => {
+  const coldStartAt = Date.now();
   registerM0Handlers();
   db = initDatabase();
   registerDirectoryHandlersInMain(db);
@@ -169,7 +172,10 @@ app.whenReady().then(() => {
   const root = new SettingsRepo(db).get('authorizedRoot');
   if (root) void restartWatcher(db, root);
 
-  void createWindow();
+  void createWindow().then(() => {
+    // 冷启动到可交互（不含索引）：窗口 loadURL 完成后计时。
+    metrics.recordColdStartMs(Date.now() - coldStartAt);
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

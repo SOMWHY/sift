@@ -32,6 +32,7 @@ export const IPC = {
   exportLedger: 'sift:export-ledger',
   getSettings: 'sift:get-settings',
   setSettings: 'sift:set-settings',
+  getMetrics: 'sift:get-metrics',
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];
@@ -40,6 +41,16 @@ export type IpcChannel = (typeof IPC)[keyof typeof IPC];
 export const CHANNEL_LIST: readonly string[] = Object.values(IPC);
 
 export type PingResult = 'pong';
+
+export interface MetricsSnapshot {
+  coldStartMs: number | null;
+  coldStartCount: number;
+  suggestionLatencyCount: number;
+  suggestionLatencyP50: number | null;
+  suggestionLatencyP95: number | null;
+  index: { done: number; total: number; percent: number; completed: boolean };
+  undo: { total: number; success: number; failure: number; successRate: number };
+}
 
 export interface ProviderStatus {
   configured: boolean;
@@ -159,6 +170,7 @@ export interface SiftBridge {
   exportLedger(): Promise<string>;
   getSettings(): Promise<Settings>;
   setSettings(partial: Partial<Settings>): Promise<{ ok: boolean }>;
+  getMetrics(): Promise<MetricsSnapshot>;
 }
 
 declare global {

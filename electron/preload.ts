@@ -32,6 +32,7 @@ const bridge: SiftBridge = {
   exportLedger: () => invoke(IPC.exportLedger) as Promise<string>,
   getSettings: () => invoke(IPC.getSettings) as ReturnType<SiftBridge['getSettings']>,
   setSettings: (partial) => invoke(IPC.setSettings, partial) as Promise<{ ok: boolean }>,
+  getMetrics: () => invoke(IPC.getMetrics) as ReturnType<SiftBridge['getMetrics']>,
 };
 
 contextBridge.exposeInMainWorld('sift', bridge);
