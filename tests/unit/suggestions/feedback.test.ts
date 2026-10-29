@@ -4,7 +4,13 @@ import { createTestDb, type TestContext } from '../db/repos/_helper';
 import { FileRepo } from '../../../electron/db/repos/files';
 import { SuggestionRepo } from '../../../electron/db/repos/suggestions';
 import { FeedbackEventRepo } from '../../../electron/db/repos/feedback_events';
-import { recordFeedback, derivePattern } from '../../../electron/suggestions/preferences';
+import { PreferenceRepo } from '../../../electron/db/repos/preferences';
+import {
+  recordFeedback,
+  derivePattern,
+  updatePreference,
+  getPreferences,
+} from '../../../electron/suggestions/preferences';
 
 let ctx: TestContext;
 
@@ -83,5 +89,42 @@ describe('derivePattern (Task 6.1)', () => {
     expect(derivePattern('Invoice 2024.pdf')).toBe('invoice 2024');
     expect(derivePattern('房屋租赁合同.pdf')).toBe('房屋租赁合同');
     expect(derivePattern('a.b.c.tar.gz')).toBe('a.b.c.tar');
+  });
+});
+
+describe('updatePreference (Task 6.2)', () => {
+  it('新 pattern 插入，weight=1', () => {
+    ctx = createTestDb();
+    updatePreference(ctx.db, 'invoice', '工作/报销');
+
+    const prefs = getPreferences(ctx.db);
+    expect(prefs).toHaveLength(1);
+    expect(prefs[0].pattern).toBe('invoice');
+    expect(prefs[0].preferred_tag).toBe('工作/报销');
+    expect(prefs[0].weight).toBe(1);
+  });
+
+  it('重复纠正同一 pattern+tag → weight 递增（不新增行）', () => {
+    ctx = createTestDb();
+    updatePreference(ctx.db, 'invoice', '工作/报销');
+    updatePreference(ctx.db, 'invoice', '工作/报销');
+    updatePreference(ctx.db, 'invoice', '工作/报销');
+
+    const prefs = getPreferences(ctx.db);
+    expect(prefs).toHaveLength(1);
+    expect(prefs[0].weight).toBe(3);
+  });
+
+  it('同一 pattern 改到不同 tag → 各自独立成行', () => {
+    ctx = createTestDb();
+    updatePreference(ctx.db, 'invoice', '工作/报销');
+    updatePreference(ctx.db, 'invoice', '财务');
+
+    const prefs = getPreferences(ctx.db);
+    expect(prefs).toHaveLength(2);
+    expect(new PreferenceRepo(ctx.db).list().map((p) => p.preferred_tag).sort()).toEqual([
+      '工作/报销',
+      '财务',
+    ]);
   });
 });

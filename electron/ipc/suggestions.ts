@@ -5,7 +5,7 @@ import { FileRepo } from '../db/repos/files';
 import { FileTagRepo } from '../db/repos/file_tags';
 import { SuggestionRepo } from '../db/repos/suggestions';
 import { TagRepo } from '../db/repos/tags';
-import { recordFeedback, derivePattern } from '../suggestions/preferences';
+import { recordFeedback, derivePattern, updatePreference } from '../suggestions/preferences';
 import type { IpcRegistrar } from './handlers';
 
 export interface SuggestionDeps {
@@ -93,6 +93,10 @@ export function registerSuggestionHandlers(ipc: IpcRegistrar, deps: SuggestionDe
       fromTag: s.proposed_tag,
       toTag: tag.name,
     });
+    const srcPath = files.get(s.file_id)?.path ?? '';
+    if (srcPath) {
+      updatePreference(deps.db, derivePattern(path.basename(srcPath)), tag.name);
+    }
     deps.onChange?.();
     return { ok: true };
   });

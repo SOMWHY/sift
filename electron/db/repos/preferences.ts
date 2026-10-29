@@ -20,6 +20,18 @@ export class PreferenceRepo {
       | undefined;
   }
 
+  getByPatternAndTag(pattern: string, preferredTag: string): Preference | undefined {
+    return this.db
+      .prepare('SELECT * FROM preferences WHERE pattern = ? AND preferred_tag = ?')
+      .get(pattern, preferredTag) as Preference | undefined;
+  }
+
+  setWeight(id: number, weight: number): void {
+    this.db
+      .prepare('UPDATE preferences SET weight = ?, updated_at = ? WHERE id = ?')
+      .run(weight, new Date().toISOString(), id);
+  }
+
   list(): Preference[] {
     return this.db.prepare('SELECT * FROM preferences ORDER BY id').all() as Preference[];
   }
