@@ -55,8 +55,10 @@ export default function HomePage() {
   return (
     <main style={{ padding: '2rem' }}>
       <NoKeyBanner configured={aiConfigured} />
-      <nav style={{ marginBottom: '1rem' }}>
+      <nav style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
         <Link href="/settings">设置</Link>
+        <Link href="/inbox">收件箱</Link>
+        <Link href="/pending">待定箱</Link>
       </nav>
       <h1>Sift</h1>
       <p>帮你看清下载文件夹，默认不动你的文件。</p>

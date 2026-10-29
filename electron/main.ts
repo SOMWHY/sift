@@ -9,6 +9,7 @@ import { SettingsRepo } from './db/repos/settings';
 import { registerDirectoryHandlers } from './ipc/handlers';
 import { registerLibraryHandlers } from './ipc/library';
 import { registerProviderHandlers } from './ipc/providers';
+import { registerSuggestionHandlers } from './ipc/suggestions';
 import { watchRoot, type WatcherHandle } from './indexer/watcher';
 import { FileRepo } from './db/repos/files';
 import { ProviderRepo } from './db/repos/providers';
@@ -92,12 +93,25 @@ function registerProviderHandlersInMain(db: Database.Database): void {
   registerProviderHandlers(ipcMain, { repo, keyStore, llm });
 }
 
+function registerSuggestionHandlersInMain(db: Database.Database): void {
+  const settings = new SettingsRepo(db);
+  const num = (key: string, fallback: number) => {
+    const v = Number(settings.get(key));
+    return Number.isFinite(v) && v > 0 ? v : fallback;
+  };
+  registerSuggestionHandlers(ipcMain, {
+    db,
+    getThresholds: () => ({ high: num('highThreshold', 0.8), mid: num('midThreshold', 0.5) }),
+  });
+}
+
 app.whenReady().then(() => {
   registerM0Handlers();
   db = initDatabase();
   registerDirectoryHandlersInMain(db);
   registerLibraryHandlersInMain(db);
   registerProviderHandlersInMain(db);
+  registerSuggestionHandlersInMain(db);
 
   // 启动时若已有授权根，恢复增量监听。
   const root = new SettingsRepo(db).get('authorizedRoot');
