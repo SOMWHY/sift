@@ -90,6 +90,21 @@ export interface ArchiveDryRunEntry {
   reason?: string;
 }
 
+/** 执行器内部计划条目（snake_case 与账本/DB 一致） */
+export interface OperationPlanEntry {
+  source_path: string;
+  target_path: string;
+  op_type: 'move';
+  suggestion_id?: number;
+  confidence?: number;
+  user_decision: 'manual' | 'accepted' | 'redirected' | 'dry-run';
+}
+
+export interface OperationPlan {
+  batch_id: string;
+  entries: OperationPlanEntry[];
+}
+
 export interface LedgerEntry {
   id: string;
   batchId: string;
