@@ -593,9 +593,9 @@ providers(id, provider_id, base_url, model, encrypted_api_key, enabled, created_
 **Interfaces:**
 - Produces: 中英 README（功能、安装、Provider 配置、隐私说明）；演示录屏脚本；逐条验收清单
 
-- [ ] **Step 1:** 写验收清单，逐条对照 §9 勾选
-- [ ] **Step 2:** 写 README + 录屏
-- [ ] **Step 3:** Commit: `docs: readme and acceptance checklist`
+- [x] **Step 1:** 写验收清单，逐条对照 §9 勾选
+- [x] **Step 2:** 写 README + 录屏
+- [x] **Step 3:** Commit: `docs: readme and acceptance checklist`
 
 ---
 
