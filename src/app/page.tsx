@@ -58,6 +58,7 @@ export default function HomePage() {
       <nav style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
         <Link href="/settings">设置</Link>
         <Link href="/inbox">收件箱</Link>
+        <Link href="/to-confirm">待确认区</Link>
         <Link href="/pending">待定箱</Link>
       </nav>
       <h1>Sift</h1>

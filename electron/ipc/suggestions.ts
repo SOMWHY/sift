@@ -11,6 +11,7 @@ export interface SuggestionDeps {
   db: Database.Database;
   /** 分档阈值（来自 settings，默认 0.8/0.5）。 */
   getThresholds: () => Thresholds;
+  setThresholds: (high: number, mid: number) => void;
 }
 
 /**
@@ -41,6 +42,17 @@ export function registerSuggestionHandlers(ipc: IpcRegistrar, deps: SuggestionDe
       .filter((s) => filter(s.confidence, thresholds))
       .map(toView);
   };
+
+  ipc.handle(IPC.getThresholds, () => deps.getThresholds());
+
+  ipc.handle(IPC.setThresholds, (high: unknown, mid: unknown) => {
+    const h = Number(high);
+    const m = Number(mid);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return { ok: false };
+    if (h <= 0 || m <= 0 || h <= m) return { ok: false };
+    deps.setThresholds(h, m);
+    return { ok: true };
+  });
 
   ipc.handle(IPC.getInbox, () => openByTier((c, t) => c >= t.high));
 

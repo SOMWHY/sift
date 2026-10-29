@@ -43,6 +43,7 @@ export default function PendingPage() {
       <nav style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
         <Link href="/">← 首页</Link>
         <Link href="/inbox">收件箱</Link>
+        <Link href="/to-confirm">待确认区</Link>
       </nav>
       <h1>待定箱（低置信度建议）</h1>
       {items.length === 0 ? (

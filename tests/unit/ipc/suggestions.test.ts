@@ -56,13 +56,21 @@ function seedSuggestion(fileId: number, proposedTag: string, confidence: number)
     .id;
 }
 
+function register(r: IpcRegistrar & { calls: Map<string, (...args: unknown[]) => unknown> }, high = 0.8, mid = 0.5) {
+  registerSuggestionHandlers(r, {
+    db: ctx.db,
+    getThresholds: () => ({ high, mid }),
+    setThresholds: (h, m) => {
+      high = h;
+      mid = m;
+    },
+  });
+}
+
 describe('registerSuggestionHandlers (Task 4.2)', () => {
   it('getInbox 仅返回高置信度（≥0.8）', async () => {
     const r = makeRegistrar();
-    registerSuggestionHandlers(r, {
-      db: ctx.db,
-      getThresholds: () => ({ high: 0.8, mid: 0.5 }),
-    });
+    register(r);
     const f1 = seedFile('/root/a.pdf');
     const f2 = seedFile('/root/b.pdf');
     seedSuggestion(f1, '合同', 0.92); // inbox
@@ -79,10 +87,7 @@ describe('registerSuggestionHandlers (Task 4.2)', () => {
 
   it('getPending 仅返回低置信度（<0.5）', async () => {
     const r = makeRegistrar();
-    registerSuggestionHandlers(r, {
-      db: ctx.db,
-      getThresholds: () => ({ high: 0.8, mid: 0.5 }),
-    });
+    register(r);
     const f = seedFile('/root/c.pdf');
     seedSuggestion(f, '发票', 0.3);
     seedSuggestion(f, '证件', 0.9);
@@ -94,10 +99,7 @@ describe('registerSuggestionHandlers (Task 4.2)', () => {
 
   it('acceptSuggestions 批量接受：建标签 + 挂 file_tag + status=accepted', async () => {
     const r = makeRegistrar();
-    registerSuggestionHandlers(r, {
-      db: ctx.db,
-      getThresholds: () => ({ high: 0.8, mid: 0.5 }),
-    });
+    register(r);
     const f = seedFile('/root/d.pdf');
     const s1 = seedSuggestion(f, '合同', 0.9);
     const s2 = seedSuggestion(f, '合同', 0.85);
@@ -115,10 +117,7 @@ describe('registerSuggestionHandlers (Task 4.2)', () => {
 
   it('acceptSuggestions 复用已存在的同名标签', async () => {
     const r = makeRegistrar();
-    registerSuggestionHandlers(r, {
-      db: ctx.db,
-      getThresholds: () => ({ high: 0.8, mid: 0.5 }),
-    });
+    register(r);
     const f = seedFile('/root/e.pdf');
     new TagRepo(ctx.db).create('合同');
     const s = seedSuggestion(f, '合同', 0.9);
@@ -129,10 +128,7 @@ describe('registerSuggestionHandlers (Task 4.2)', () => {
 
   it('assignTag 重定向到指定标签，status=redirected', async () => {
     const r = makeRegistrar();
-    registerSuggestionHandlers(r, {
-      db: ctx.db,
-      getThresholds: () => ({ high: 0.8, mid: 0.5 }),
-    });
+    register(r);
     const f = seedFile('/root/f.pdf');
     const target = new TagRepo(ctx.db).create('证件').id;
     const s = seedSuggestion(f, '发票', 0.3);
@@ -146,15 +142,59 @@ describe('registerSuggestionHandlers (Task 4.2)', () => {
 
   it('ignore 置为 rejected，不建标签', async () => {
     const r = makeRegistrar();
-    registerSuggestionHandlers(r, {
-      db: ctx.db,
-      getThresholds: () => ({ high: 0.8, mid: 0.5 }),
-    });
+    register(r);
     const f = seedFile('/root/g.pdf');
     const s = seedSuggestion(f, '发票', 0.3);
 
     await r.calls.get(IPC.ignore)!(s);
     expect(new SuggestionRepo(ctx.db).get(s)!.status).toBe('rejected');
     expect(new TagRepo(ctx.db).list()).toHaveLength(0);
+  });
+});
+
+describe('registerSuggestionHandlers (Task 4.3)', () => {
+  it('getToConfirm 仅返回中档 [mid, high)', async () => {
+    const r = makeRegistrar();
+    register(r);
+    const f = seedFile('/root/m.pdf');
+    seedSuggestion(f, '高', 0.8); // inbox 边界（不属于中档）
+    seedSuggestion(f, '中上', 0.79); // to_confirm
+    seedSuggestion(f, '中下', 0.5); // to_confirm 边界
+    seedSuggestion(f, '低', 0.49); // pending
+
+    const toConfirm = await r.calls.get(IPC.getToConfirm)!();
+    expect(toConfirm.map((s: { proposedTag: string }) => s.proposedTag).sort()).toEqual([
+      '中上',
+      '中下',
+    ]);
+  });
+
+  it('getThresholds 返回当前阈值', async () => {
+    const r = makeRegistrar();
+    register(r, 0.85, 0.6);
+    expect(await r.calls.get(IPC.getThresholds)!()).toEqual({ high: 0.85, mid: 0.6 });
+  });
+
+  it('setThresholds 修改后重新分档', async () => {
+    const r = makeRegistrar();
+    register(r); // 0.8 / 0.5
+    const f = seedFile('/root/re.pdf');
+    seedSuggestion(f, '夹心', 0.6); // 初始为 to_confirm
+
+    expect(await r.calls.get(IPC.getToConfirm)!()).toHaveLength(1);
+
+    // 把 mid 抬到 0.7：0.6 < 0.7 → 落入 pending
+    expect(await r.calls.get(IPC.setThresholds)!(0.8, 0.7)).toEqual({ ok: true });
+    expect(await r.calls.get(IPC.getThresholds)!()).toEqual({ high: 0.8, mid: 0.7 });
+    expect(await r.calls.get(IPC.getToConfirm)!()).toHaveLength(0);
+    expect(await r.calls.get(IPC.getPending)!()).toHaveLength(1);
+  });
+
+  it('setThresholds 非法值拒绝（high <= mid）', async () => {
+    const r = makeRegistrar();
+    register(r);
+    expect(await r.calls.get(IPC.setThresholds)!(0.5, 0.5)).toEqual({ ok: false });
+    expect(await r.calls.get(IPC.setThresholds)!(0.4, 0.6)).toEqual({ ok: false });
+    expect(await r.calls.get(IPC.getThresholds)!()).toEqual({ high: 0.8, mid: 0.5 });
   });
 });

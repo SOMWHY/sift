@@ -102,6 +102,10 @@ function registerSuggestionHandlersInMain(db: Database.Database): void {
   registerSuggestionHandlers(ipcMain, {
     db,
     getThresholds: () => ({ high: num('highThreshold', 0.8), mid: num('midThreshold', 0.5) }),
+    setThresholds: (high, mid) => {
+      settings.set('highThreshold', String(high));
+      settings.set('midThreshold', String(mid));
+    },
   });
 }
 

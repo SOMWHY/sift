@@ -21,11 +21,26 @@ export default function SettingsPage() {
   });
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [high, setHigh] = useState('0.8');
+  const [mid, setMid] = useState('0.5');
+  const [thresholdMsg, setThresholdMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.sift) return;
     void window.sift.getProviderStatus().then(setStatus);
+    void window.sift.getThresholds().then((t) => {
+      setHigh(String(t.high));
+      setMid(String(t.mid));
+    });
   }, []);
+
+  async function saveThresholds() {
+    if (!window.sift) return;
+    const h = Number(high);
+    const m = Number(mid);
+    const result = await window.sift.setThresholds(h, m);
+    setThresholdMsg(result.ok ? '阈值已保存。' : '无效阈值：需 0 < 中档 < 高档。');
+  }
 
   async function save() {
     if (!window.sift) return;
@@ -131,6 +146,43 @@ export default function SettingsPage() {
           </button>
         </div>
         {message && <p style={{ marginTop: '0.8rem' }}>{message}</p>}
+      </section>
+
+      <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem' }}>
+        <h2>建议分档阈值</h2>
+        <p style={{ color: '#666', fontSize: '0.9rem' }}>
+          置信度 ≥ 高档 → 收件箱；介于中档与高档之间 → 待确认区；低于中档 → 待定箱。
+        </p>
+        <label style={{ display: 'block', marginTop: '0.8rem' }}>
+          高档阈值（收件箱）
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            max="1"
+            value={high}
+            onChange={(e) => setHigh(e.target.value)}
+            style={{ display: 'block', width: '100%', padding: '0.5rem', marginTop: '0.3rem' }}
+          />
+        </label>
+        <label style={{ display: 'block', marginTop: '0.8rem' }}>
+          中档阈值（待确认区）
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            max="1"
+            value={mid}
+            onChange={(e) => setMid(e.target.value)}
+            style={{ display: 'block', width: '100%', padding: '0.5rem', marginTop: '0.3rem' }}
+          />
+        </label>
+        <div style={{ marginTop: '1rem' }}>
+          <button type="button" onClick={saveThresholds}>
+            保存阈值
+          </button>
+        </div>
+        {thresholdMsg && <p style={{ marginTop: '0.8rem' }}>{thresholdMsg}</p>}
       </section>
     </main>
   );
