@@ -30,6 +30,17 @@ export class SuggestionRepo {
       .all(status) as Suggestion[];
   }
 
+  /** 统计打开态（尚未处理）的建议数：pending + to_confirm + inbox。 */
+  countOpen(): number {
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM suggestions
+         WHERE status IN ('pending', 'to_confirm', 'inbox')`,
+      )
+      .get() as { n: number };
+    return Number(row.n);
+  }
+
   listByFile(fileId: number): Suggestion[] {
     return this.db
       .prepare('SELECT * FROM suggestions WHERE file_id = ? ORDER BY id')

@@ -16,8 +16,13 @@ import { ProviderRepo } from './db/repos/providers';
 import { createKeyStore } from './providers/key-store';
 import { createLLMClient } from './providers/llm-client';
 
+import { SuggestionRepo } from './db/repos/suggestions';
+import { TrayController } from './tray/controller';
+
 let db: Database.Database | null = null;
 let watcher: WatcherHandle | null = null;
+let tray: TrayController | null = null;
+let mainWindow: BrowserWindow | null = null;
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -37,6 +42,11 @@ async function createWindow(): Promise<void> {
       nodeIntegration: false,
       sandbox: false,
     },
+  });
+
+  mainWindow = win;
+  win.on('closed', () => {
+    mainWindow = null;
   });
 
   await win.loadURL(getServerUrl());
@@ -106,7 +116,26 @@ function registerSuggestionHandlersInMain(db: Database.Database): void {
       settings.set('highThreshold', String(high));
       settings.set('midThreshold', String(mid));
     },
+    onChange: () => refreshTrayBadge(),
   });
+}
+
+/** 打开态建议数 + AI 是否已配置 → 驱动托盘红点。 */
+function refreshTrayBadge(): void {
+  if (!tray || !db) return;
+  const count = new SuggestionRepo(db).countOpen();
+  const configured = new ProviderRepo(db).list().some((p) => p.encrypted_api_key);
+  tray.update(count, configured);
+}
+
+function showMainWindow(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
+  void createWindow();
 }
 
 app.whenReady().then(() => {
@@ -116,6 +145,9 @@ app.whenReady().then(() => {
   registerLibraryHandlersInMain(db);
   registerProviderHandlersInMain(db);
   registerSuggestionHandlersInMain(db);
+
+  tray = new TrayController(showMainWindow);
+  refreshTrayBadge();
 
   // 启动时若已有授权根，恢复增量监听。
   const root = new SettingsRepo(db).get('authorizedRoot');
@@ -138,4 +170,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   stopServer();
+  tray?.destroy();
+  tray = null;
 });

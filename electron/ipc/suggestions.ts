@@ -12,6 +12,8 @@ export interface SuggestionDeps {
   /** 分档阈值（来自 settings，默认 0.8/0.5）。 */
   getThresholds: () => Thresholds;
   setThresholds: (high: number, mid: number) => void;
+  /** 建议状态变化后回调（用于刷新托盘红点）。 */
+  onChange?: () => void;
 }
 
 /**
@@ -68,6 +70,7 @@ export function registerSuggestionHandlers(ipc: IpcRegistrar, deps: SuggestionDe
       fileTags.set(s.file_id, tag.id, s.confidence);
       suggestions.updateStatus(s.id, 'accepted');
     }
+    deps.onChange?.();
     return { ok: true };
   });
 
@@ -77,6 +80,7 @@ export function registerSuggestionHandlers(ipc: IpcRegistrar, deps: SuggestionDe
     if (!s || !tag) return { ok: false };
     fileTags.set(s.file_id, tag.id, s.confidence);
     suggestions.updateStatus(s.id, 'redirected');
+    deps.onChange?.();
     return { ok: true };
   });
 
@@ -84,6 +88,7 @@ export function registerSuggestionHandlers(ipc: IpcRegistrar, deps: SuggestionDe
     const s = suggestions.get(Number(suggestionId));
     if (!s) return { ok: false };
     suggestions.updateStatus(s.id, 'rejected');
+    deps.onChange?.();
     return { ok: true };
   });
 }
